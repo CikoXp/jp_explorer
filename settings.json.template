@@ -126,7 +126,7 @@
     // date_time: a collection of settings that pertain to the date and time values displayed in the explorer
     "date_time": {
       // display_format: The format to use when displaying date/time values
-      //                 Date/time values are formatted using the Luxon library and must follow the correct syntax (read more: https://moment.github.io/luxon/docs/manual/formatting.html#table-of-tokens)
+      //                 Date/time values are formatted using the Luxon library and must follow the correct syntax (read more: https://moment.github.io/luxon/#/formatting?id=table-of-tokens)
       //                 Ex: LLL dd, yyyy HH:mm:ss ZZZZ = May 27, 2019 22:04:11 UTC
       "display_format": "LLL dd, yyyy HH:mm:ss ZZZZ",
       // timezone: All dates and times are stored as UTC dates and can either be displayed in UTC format or else they can be displayed in the local timezone according to a user's web browser settings
@@ -414,7 +414,7 @@
           // url: The exact url that the social link should navigate to
           "url": "https://github.com/team-exor",
           // fontawesome_class: A string of css classes, separated by spaces that can be used to display a fontawesome icon for this social link. See https://fontawesome.com/ for more info
-          "fontawesome_class": "fab fa-github",
+          "fontawesome_class": "fa-brands fa-github",
           // image_path: The path to an image file that will be displayed for this social link
           //             NOTE: The path root is /public
           "image_path": ""
@@ -428,7 +428,7 @@
           // url: The exact url that the social link should navigate to
           "url": "https://twitter.com/ExorOfficial",
           // fontawesome_class: A string of css classes, separated by spaces that can be used to display a fontawesome icon for this social link. See https://fontawesome.com/ for more info
-          "fontawesome_class": "fab fa-twitter",
+          "fontawesome_class": "fa-brands fa-twitter",
           // image_path: The path to an image file that will be displayed for this social link
           //             NOTE: The path root is /public
           "image_path": ""
@@ -442,7 +442,7 @@
           // url: The exact url that the social link should navigate to
           "url": "https://discord.gg/dSuGm3y",
           // fontawesome_class: A string of css classes, separated by spaces that can be used to display a fontawesome icon for this social link. See https://fontawesome.com/ for more info
-          "fontawesome_class": "fab fa-discord",
+          "fontawesome_class": "fa-brands fa-discord",
           // image_path: The path to an image file that will be displayed for this social link
           //             NOTE: The path root is /public
           "image_path": ""
@@ -456,7 +456,7 @@
           // url: The exact url that the social link should navigate to
           "url": "https://t.me/Exorofficial",
           // fontawesome_class: A string of css classes, separated by spaces that can be used to display a fontawesome icon for this social link. See https://fontawesome.com/ for more info
-          "fontawesome_class": "fab fa-telegram",
+          "fontawesome_class": "fa-brands fa-telegram",
           // image_path: The path to an image file that will be displayed for this social link
           //             NOTE: The path root is /public
           "image_path": ""
@@ -887,7 +887,7 @@
     "show_market_select": true,
     // exchanges: Enable/disable api integration with any of the available built-in exchanges
     //            Enabled exchanges display a number of exchange-related metrics including market summary, 24 hour chart, most recent buy/sell orders and latest trade history
-    //            Supported exchanges: altmarkets, bittrex, bleutrade, crex, dex-trade, freiexchange/freixlite, poloniex, southxchange, txbit, unnamed, yobit
+    //            Supported exchanges: altmarkets, bittrex, dex-trade, freiexchange/freixlite, poloniex, southxchange, xeggex, yobit
     "exchanges": {
       // altmarkets: a collection of settings that pertain to the altmarkets exchange
       "altmarkets": {
@@ -904,28 +904,6 @@
       "bittrex": {
         // enabled: Enable/disable the bittrex exchange (true/false)
         //          If set to false, the bittrex page will be completely inaccessible and no market data will be downloaded for this exchange
-        "enabled": false,
-        // trading_pairs: An array of market trading pair symbols
-        //                You can add as many trading pairs as necessary
-        //                All entries must specify your coins symbol as it is displayed on the exchange, followed by a slash (/) and ending with the symbol of the market or asset that is being traded against
-        //                Ex: "LTC/BTC", "LTC/USDT", "LTC/ETH"
-        "trading_pairs": [ "LTC/BTC" ]
-      },
-      // bleutrade: a collection of settings that pertain to the bleutrade exchange
-      "bleutrade": {
-        // enabled: Enable/disable the bleutrade exchange (true/false)
-        //          If set to false, the bleutrade page will be completely inaccessible and no market data will be downloaded for this exchange
-        "enabled": false,
-        // trading_pairs: An array of market trading pair symbols
-        //                You can add as many trading pairs as necessary
-        //                All entries must specify your coins symbol as it is displayed on the exchange, followed by a slash (/) and ending with the symbol of the market or asset that is being traded against
-        //                Ex: "LTC/BTC", "LTC/USDT", "LTC/ETH"
-        "trading_pairs": [ "LTC/BTC" ]
-      },
-      // crex: a collection of settings that pertain to the crex exchange
-      "crex": {
-        // enabled: Enable/disable the crex exchange (true/false)
-        //          If set to false, the crex page will be completely inaccessible and no market data will be downloaded for this exchange
         "enabled": false,
         // trading_pairs: An array of market trading pair symbols
         //                You can add as many trading pairs as necessary
@@ -978,28 +956,17 @@
         //                Ex: "LTC/BTC", "LTC/USDT", "LTC/ETH"
         "trading_pairs": [ "LTC/BTC" ]
       },
-      // txbit: a collection of settings that pertain to the txbit exchange
-      //        NOTE: txbit does not display a 24-hour chart due to a lack of OHLCV api data
-      "txbit": {
-        // enabled: Enable/disable the txbit exchange (true/false)
-        //          If set to false, the txbit page will be completely inaccessible and no market data will be downloaded for this exchange
+      // xeggex: a collection of settings that pertain to the xeggex exchange
+      //        NOTE: xeggex does not display a 24-hour chart due to a lack of OHLCV api data
+      "xeggex": {
+        // enabled: Enable/disable the xeggex exchange (true/false)
+        //          If set to false, the xeggex page will be completely inaccessible and no market data will be downloaded for this exchange
         "enabled": false,
         // trading_pairs: An array of market trading pair symbols
         //                You can add as many trading pairs as necessary
         //                All entries must specify your coins symbol as it is displayed on the exchange, followed by a slash (/) and ending with the symbol of the market or asset that is being traded against
         //                Ex: "LTC/BTC", "LTC/USDT", "LTC/ETH"
-        "trading_pairs": [ "LTC/ETH" ]
-      },
-      // unnamed: a collection of settings that pertain to the unnamed exchange
-      "unnamed": {
-        // enabled: Enable/disable the unnamed exchange (true/false)
-        //          If set to false, the unnamed page will be completely inaccessible and no market data will be downloaded for this exchange
-        "enabled": false,
-        // trading_pairs: An array of market trading pair symbols
-        //                You can add as many trading pairs as necessary
-        //                All entries must specify your coins symbol as it is displayed on the exchange, followed by a slash (/) and ending with the symbol of the market or asset that is being traded against
-        //                Ex: "LTC/BTC", "LTC/USDT", "LTC/ETH"
-        "trading_pairs": [ "LTC/BTC" ]
+        "trading_pairs": [ "LTC/USDT" ]
       },
       // yobit: a collection of settings that pertain to the yobit exchange
       //        NOTE: yobit does not display a 24-hour chart due to a lack of OHLCV api data

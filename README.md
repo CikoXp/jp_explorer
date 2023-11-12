@@ -10,12 +10,20 @@ Written in node.js and mongodb, eIquidus is the most stable, secure, customizabl
 
 ![Homepage](public/img/screenshots/homepage-1-102-0.png)
 
+### Crowdfunding Program
+
+Exor accepts targeted donations in an effort to crowdfund various feature and improvement requests for the block explorer and other Exor-related projects. [Browse the list of unfunded tasks](https://exor.io/tasklist/?o=ta&c=0&f=0&u=1) and send Exor coins to the correct funding address to help meet the funding goal for tasks that you would like to see developed. Once the funding goal is met, Exor developers will begin work on the task asap and will remain a top priority until completed. If you are a software developer and would like to work on funded tasks in exchange for payment in EXOR, please get in touch with us using one of the [Developer Contact](#developer-contact) links below.
+
 ### Premium Support
 
-All code in this project is open source and available free-of-charge under the BSD-3-Clause license. If you require assistance setting up an explorer for your coin, or are interested in hiring a developer to incorporate custom changes for your explorer, you may contact the developer using the links below:
+All code in this project is open source and available free-of-charge under the BSD-3-Clause license. If you require assistance setting up an explorer for your coin, or are interested in hiring a developer to incorporate custom changes for your explorer, you may contact the developer using the [Developer Contact](#developer-contact) links below.
+
+### Developer Contact
+
+Feel free to contact the developer using one of the options below:
 
 <div align="center">
-<a href="https://discord.gg/dSuGm3y"><img src="https://img.shields.io/badge/Discord-Joe%20%5BTeam%20Exor%5D%235573-blue?style=for-the-badge&logo=Discord" /></a>&nbsp;
+<a href="https://discord.gg/dSuGm3y"><img src="https://img.shields.io/badge/Discord-Joe%20%5BTeam%20Exor%5D-blue?style=for-the-badge&logo=Discord" /></a>&nbsp;
 <a href="https://t.me/joeuhren"><img src="https://img.shields.io/badge/Telegram-joeuhren-blue?style=for-the-badge&logo=Telegram" /></a>
 </div>
 
@@ -69,18 +77,20 @@ Table of Contents
 ### Features
 
 - Built using the following scripts and technologies:
-  - Node.js (v18.16.0 or newer recommended)
-  - MongoDB (v6.0.6 or newer recommended)
-  - JQuery v3.6.0
+  - Node.js (v20.9.0 or newer recommended)
+  - MongoDB (v7.0.2 or newer recommended)
+  - jQuery v3.7.1
   - Bootstrap v5.1.3
-  - DataTables v1.11.3
-  - FontAwesome v5.15.4
-  - Luxon v2.1.1
-  - jqPlot v1.0.9
-  - Chart.js v3.6.1
-    - chartjs-plugin-crosshair v1.2.0 ([https://github.com/abelheinsbroek/chartjs-plugin-crosshair](https://github.com/abelheinsbroek/chartjs-plugin-crosshair))
-  - OverlayScrollbars v1.13.3
-  - flag-icon-css v4.1.4 ([https://github.com/lipis/flag-icon-css](https://github.com/lipis/flag-icon-css))
+  - DataTables v1.13.6
+  - Font Awesome v6.4.2
+  - Luxon v3.4.3
+  - Chart.js v4.4.0
+    - chartjs-plugin-crosshair v2.0.0 ([https://github.com/abelheinsbroek/chartjs-plugin-crosshair](https://github.com/abelheinsbroek/chartjs-plugin-crosshair))
+    - chartjs-chart-financial v0.1.1 ([https://github.com/chartjs/chartjs-chart-financial](https://github.com/chartjs/chartjs-chart-financial))
+    - chartjs-adapter-luxon v1.3.1 ([https://github.com/chartjs/chartjs-adapter-luxon](https://github.com/chartjs/chartjs-adapter-luxon))
+  - OverlayScrollbars v2.3.2
+  - flag-icons v6.11.1 ([https://github.com/lipis/flag-icons](https://github.com/lipis/flag-icons))
+  - Intl.js (uses the v3.111.0 polyfill service to only download if using a browser that doesn't already support the ECMAScript Internationalization API)
 - Platform independent (tested to run on Windows, MacOS and Linux) **NOTE:** Most of the instructions in this guide were written for use with Linux and may need to be modified when using another OS
 - Mobile-friendly
 - Sass support
@@ -90,17 +100,14 @@ Table of Contents
   - **Movement:** Displays latest blockchain transactions that are greater than a certain configurable amount
   - **Network:** Displays a list of peers that have connected to the coind wallet in the past 24 hours, along with useful addnode data that can be used to connect your own wallets to the network easier
   - **Top 100:** Displays the top 100 richest wallet addresses, the top 100 wallet addresses that have the highest total number of coins received based on adding up all received transactions, as well as a table and pie chart breakdown of wealth distribution. Additional support for omitting burned coins from top 100 lists
-  - **Markets:** Displays a number of exchange-related metrics including market summary, 24 hour chart, most recent buy/sell orders and latest trade history. The last known default exchange price is automatically converted to USD using the coingecko api from [https://www.coingecko.com/en/api](https://www.coingecko.com/en/api). The following 11 cryptocurrency exchanges are supported:
+  - **Markets:** Displays a number of exchange-related metrics including market summary, 24 hour chart, most recent buy/sell orders and latest trade history. The last known default exchange price is automatically converted to USD using the coingecko api from [https://www.coingecko.com/en/api](https://www.coingecko.com/en/api). The following 8 cryptocurrency exchanges are supported:
     - [AltMarkets](https://altmarkets.io)
     - [Bittrex](https://bittrex.com)
-    - [Bleutrade](https://bleutrade.com)
-    - [Crex24](https://crex24.com)
     - [Dex-Trade](https://dex-trade.com)
     - [FreiExchange](https://freiexchange.com)/[FreiXLite](https://freixlite.com) *\*no chart support due to a lack of OHLCV api data*
     - [Poloniex](https://poloniex.com)
     - [SouthXchange](https://southxchange.com)
-    - [Txbit](https://txbit.io) *\*no chart support due to a lack of OHLCV api data*
-    - [Unnamed](https://unnamed.exchange)
+    - [Xeggex](https://xeggex.com) *\*no chart support due to a lack of OHLCV api data*
     - [Yobit](https://yobit.io) *\*no chart support due to a lack of OHLCV api data*
   - **API:** A listing of available public API's that can be used to retrieve information from the network without the need for a local wallet. The following public API's are supported:
     - **RPC API calls** (Return data from coind)
@@ -229,8 +236,8 @@ Table of Contents
 
 The following prerequisites must be installed before using the explorer:
 
-- [Node.js](https://nodejs.org/en/) (v18.16.0 or newer recommended)
-- [MongoDB](https://www.mongodb.com/) (v6.0.6 or newer recommended)
+- [Node.js](https://nodejs.org/en/) (v20.9.0 or newer recommended)
+- [MongoDB](https://www.mongodb.com/) (v7.0.2 or newer recommended)
 - [Git](https://git-scm.com/downloads) (v2.36.0 or newer recommended)
 - A fully synchronized *coind* wallet daemon that supports the [Bitcoin RPC API protocol](https://developer.bitcoin.org/reference/rpc/index.html). **NOTE:** In most cases, the blockchain must be synced with the `txindex` feature enabled to have access to all transactions. See the [Wallet Settings](#wallet-settings) section for more details.
 
@@ -249,7 +256,7 @@ nvm install --lts
 Using the `--lts` option in the last cmd above will install the most recent LTS version of Node.js. If you want to install a specific version you can do it with the following cmd:
 
 ```
-nvm install 18.16.0
+nvm install 20.9.0
 ```
 
 If desired, multiple versions of Node.js can be installed at the same time with NVM. Use the following syntax to easily change the current Node.js version to another installed version:
@@ -262,12 +269,12 @@ nvm use 18.14.2
 
 It is recommended to follow the install instructions at the official mongo website since they will be updated more often and have specific instructions for many different operating systems: [https://www.mongodb.com/docs/manual/administration/install-community/](https://www.mongodb.com/docs/manual/administration/install-community/).
 
-Below are instructions to install the latest v6.x version of MongoDB on Ubunutu 22.04 (run one line at a time):
+Below are instructions to install the latest v7.x version of MongoDB on Ubunutu 22.04 (run one line at a time):
 
 ```
-sudo apt-get install gnupg
-curl -fsSL https://pgp.mongodb.com/server-6.0.asc | sudo gpg -o /usr/share/keyrings/mongodb-server-6.0.gpg --dearmor
-echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-6.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/6.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-6.0.list
+sudo apt-get install gnupg curl
+curl -fsSL https://pgp.mongodb.com/server-7.0.asc | sudo gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg --dearmor
+echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
 sudo apt-get update
 sudo apt-get install -y mongodb-org
 ```
@@ -953,12 +960,14 @@ This warning is currently displayed when starting or stopping the explorer using
 
 The eIquidus block explorer is brought to you by the tireless efforts of the [Exor development team](https://exor.io/#section-team) for the benefit of the greater crypto community. If you enjoy our work, please consider supporting our continued development of this and many other cool crypto projects which you can find on our [github page](https://github.com/team-exor).
 
-Please consider supporting us with a small donation by sending us some cryptocurrency:
+You can support us via one of the following options:
 
-- **BTC:** [15zQAQFB9KR35nPWEJEKvmytUF6fg2zvdP](https://www.blockchain.com/btc/address/15zQAQFB9KR35nPWEJEKvmytUF6fg2zvdP)
-- **EXOR:** [EYYW8Nvz5aJz33M3JNHXG2FEHWUsntozrd](https://explorer.exor.io/address/EYYW8Nvz5aJz33M3JNHXG2FEHWUsntozrd)
-
-We also encourage submitting quality pull requests from software developers looking to help make the block explorer even better.
+1. [Buy and hodl EXOR](https://freixlite.com/market/EXOR/LTC). Buying and trading our EXOR coin helps stimulate the market price which allows us to hire more developers and continue to release high quality products in the future.
+2. Participate in our [crowdfunding program](https://exor.io/tasklist/?o=ta&c=0&f=0&u=1) by either sending some cryptocurrency to help fund the tasks you are most eager to see brought to life or [submit a new custom task request](https://exor.io/add-new-task/) detailing a feature or improvement you would like to see developed for any Exor-related project.
+3. Consider a small donation by sending us some cryptocurrency:
+    - **BTC:** [15zQAQFB9KR35nPWEJEKvmytUF6fg2zvdP](https://www.blockchain.com/btc/address/15zQAQFB9KR35nPWEJEKvmytUF6fg2zvdP)
+    - **EXOR:** [EYYW8Nvz5aJz33M3JNHXG2FEHWUsntozrd](https://explorer.exor.io/address/EYYW8Nvz5aJz33M3JNHXG2FEHWUsntozrd)
+4. Are you a software developer? Consider taking advantage of our [crowdfunding program](https://exor.io/tasklist/?o=ta&c=0&f=1&u=1) and get paid in EXOR to help make the block explorer and other Exor-related projects even better by submitting code improvements for open bounty tasks.
 
 ### Special Thanks
 

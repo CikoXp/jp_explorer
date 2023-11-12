@@ -117,7 +117,7 @@ app.post('/claim', function(req, res) {
       if (body == false)
         res.json({'status': 'failed', 'error': true, 'message': 'Invalid signature'});
       else if (body == true) {
-        db.update_label(req.body.address, req.body.message, function(val) {
+        db.update_claim_name(req.body.address, req.body.message, function(val) {
           // check if the update was successful
           if (val == '')
             res.json({'status': 'success'});
@@ -440,82 +440,86 @@ app.use('/ext/getaddresstxs/:address/:start/:length', function(req, res) {
     res.end('This method is disabled');
 });
 
-app.use('/ext/getsummary', function(req, res) {
-  // check if the getsummary api is enabled or else check the headers to see if it matches an internal ajax request from the explorer itself (TODO: come up with a more secure method of whitelisting ajax calls from the explorer)
-  if ((settings.api_page.enabled == true && settings.api_page.public_apis.ext.getsummary.enabled == true) || (req.headers['x-requested-with'] != null && req.headers['x-requested-with'].toLowerCase() == 'xmlhttprequest' && req.headers.referer != null && req.headers.accept.indexOf('text/javascript') > -1 && req.headers.accept.indexOf('application/json') > -1)) {
+function get_connection_and_block_counts(get_data, cb) {
+  // check if the connection and block counts should be returned
+  if (get_data) {
     lib.get_connectioncount(function(connections) {
       lib.get_blockcount(function(blockcount) {
-        // check if this is a footer-only method that should only return the connection count and block count
-        if (req.headers['footer-only'] != null && req.headers['footer-only'] == 'true') {
-          // only return the connection count and block count
-          res.send({
-            connections: (connections ? connections : '-'),
-            blockcount: (blockcount ? blockcount : '-')
-          });
-        } else {
-          lib.get_hashrate(function(hashrate) {
-            db.get_stats(settings.coin.name, function (stats) {
-              lib.get_masternodecount(function(masternodestotal) {
-                lib.get_difficulty(function(difficulty) {
-                  difficultyHybrid = '';
+        return cb(connections, blockcount);
+      });
+    });
+  } else
+    return cb(null, null);
+}
 
-                  if (difficulty && difficulty['proof-of-work']) {
-                    if (settings.shared_pages.difficulty == 'Hybrid') {
-                      difficultyHybrid = 'POS: ' + difficulty['proof-of-stake'];
-                      difficulty = 'POW: ' + difficulty['proof-of-work'];
-                    } else if (settings.shared_pages.difficulty == 'POW')
-                      difficulty = difficulty['proof-of-work'];
-                    else
-                      difficulty = difficulty['proof-of-stake'];
+app.use('/ext/getsummary', function(req, res) {
+  const isInternal = (req.headers['x-requested-with'] != null && req.headers['x-requested-with'].toLowerCase() == 'xmlhttprequest' && req.headers.referer != null && req.headers.accept.indexOf('text/javascript') > -1 && req.headers.accept.indexOf('application/json') > -1);
+
+  // check if the getsummary api is enabled or else check the headers to see if it matches an internal ajax request from the explorer itself (TODO: come up with a more secure method of whitelisting ajax calls from the explorer)
+  if ((settings.api_page.enabled == true && settings.api_page.public_apis.ext.getsummary.enabled == true) || isInternal) {
+    // check if this is a footer-only method that should only return the connection count and block count
+    if (req.headers['footer-only'] != null && req.headers['footer-only'] == 'true') {
+      // only return the connection count and block count
+      get_connection_and_block_counts(true, function(connections, blockcount) {
+        res.send({
+          connections: (connections ? connections : '-'),
+          blockcount: (blockcount ? blockcount : '-')
+        });
+      });
+    } else {
+      // get the connection and block counts only if this is NOT an internal call
+      get_connection_and_block_counts(!isInternal, function(connections, blockcount) {
+        lib.get_hashrate(function(hashrate) {
+          db.get_stats(settings.coin.name, function (stats) {
+            lib.get_masternodecount(function(masternodestotal) {
+              lib.get_difficulty(function(difficulty) {
+                let difficultyHybrid = '';
+
+                if (difficulty && difficulty['proof-of-work']) {
+                  if (settings.shared_pages.difficulty == 'Hybrid') {
+                    difficultyHybrid = 'POS: ' + difficulty['proof-of-stake'];
+                    difficulty = 'POW: ' + difficulty['proof-of-work'];
+                  } else if (settings.shared_pages.difficulty == 'POW')
+                    difficulty = difficulty['proof-of-work'];
+                  else
+                    difficulty = difficulty['proof-of-stake'];
+                }
+
+                if (hashrate == 'There was an error. Check your console.')
+                  hashrate = 0;
+
+                let mn_total = 0;
+                let mn_enabled = 0;
+
+                // check if the masternode count api is enabled
+                if (settings.api_page.public_apis.rpc.getmasternodecount.enabled == true && settings.api_cmds['getmasternodecount'] != null && settings.api_cmds['getmasternodecount'] != '') {
+                  // masternode count api is available
+                  if (masternodestotal) {
+                    if (masternodestotal.total)
+                      mn_total = masternodestotal.total;
+
+                    if (masternodestotal.enabled)
+                      mn_enabled = masternodestotal.enabled;
                   }
+                }
 
-                  if (hashrate == 'There was an error. Check your console.')
-                    hashrate = 0;
-
-                  // check if the masternode count api is enabled
-                  if (settings.api_page.public_apis.rpc.getmasternodecount.enabled == true && settings.api_cmds['getmasternodecount'] != null && settings.api_cmds['getmasternodecount'] != '') {
-                    // masternode count api is available
-                    var mn_total = 0;
-                    var mn_enabled = 0;
-
-                    if (masternodestotal) {
-                      if (masternodestotal.total)
-                        mn_total = masternodestotal.total;
-
-                      if (masternodestotal.enabled)
-                        mn_enabled = masternodestotal.enabled;
-                    }
-
-                    res.send({
-                      difficulty: (difficulty ? difficulty : '-'),
-                      difficultyHybrid: difficultyHybrid,
-                      supply: (stats == null || stats.supply == null ? 0 : stats.supply),
-                      hashrate: hashrate,
-                      lastPrice: (stats == null || stats.last_price == null ? 0 : stats.last_price),
-                      connections: (connections ? connections : '-'),
-                      masternodeCountOnline: (masternodestotal ? mn_enabled : '-'),
-                      masternodeCountOffline: (masternodestotal ? Math.floor(mn_total - mn_enabled) : '-'),
-                      blockcount: (blockcount ? blockcount : '-')
-                    });
-                  } else {
-                    // masternode count api is not available
-                    res.send({
-                      difficulty: (difficulty ? difficulty : '-'),
-                      difficultyHybrid: difficultyHybrid,
-                      supply: (stats == null || stats.supply == null ? 0 : stats.supply),
-                      hashrate: hashrate,
-                      lastPrice: (stats == null || stats.last_price == null ? 0 : stats.last_price),
-                      connections: (connections ? connections : '-'),
-                      blockcount: (blockcount ? blockcount : '-')
-                    });
-                  }
+                res.send({
+                  difficulty: (difficulty ? difficulty : '-'),
+                  difficultyHybrid: difficultyHybrid,
+                  supply: (stats == null || stats.supply == null ? 0 : stats.supply),
+                  hashrate: hashrate,
+                  lastPrice: (stats == null || stats.last_price == null ? 0 : stats.last_price),
+                  connections: (connections ? connections : '-'),
+                  blockcount: (blockcount ? blockcount : '-'),
+                  masternodeCountOnline: (masternodestotal && mn_enabled != 0 ? mn_enabled : '-'),
+                  masternodeCountOffline: (masternodestotal && mn_total != 0 ? Math.floor(mn_total - mn_enabled) : '-')
                 });
               });
             });
           });
-        }
+        });
       });
-    });
+    }
   } else
     res.end('This method is disabled');
 });
@@ -644,6 +648,29 @@ app.use('/ext/getorphanlist/:start/:length', function(req, res) {
     res.end('This method is disabled');
 });
 
+// get the last updated date for a particular section
+app.use('/ext/getlastupdated/:section', function(req, res) {
+  // check the headers to see if it matches an internal ajax request from the explorer itself (TODO: come up with a more secure method of whitelisting ajax calls from the explorer)
+  if (req.headers['x-requested-with'] != null && req.headers['x-requested-with'].toLowerCase() == 'xmlhttprequest' && req.headers.referer != null && req.headers.accept.indexOf('text/javascript') > -1 && req.headers.accept.indexOf('application/json') > -1) {
+    // fix parameters
+    if (req.params.section == null)
+      req.params.section = '';
+
+    switch (req.params.section.toLowerCase()) {
+      case 'blockchain':
+      case 'movement':
+        // lookup last updated date
+        db.get_stats(settings.coin.name, function (stats) {
+          res.json({'last_updated_date': stats.blockchain_last_updated});
+        });
+        break;
+      default:
+        res.send({error: 'Cannot find last updated date'});
+    }
+  } else
+    res.end('This method is disabled');
+});
+
 app.use('/ext/getnetworkchartdata', function(req, res) {
   db.get_network_chart_data(function(data) {
     if (data)
@@ -757,7 +784,7 @@ if (settings.markets_page.enabled == true) {
   } else if (!ex[ex_name].enabled) {
     // exchange is not enabled
     ex_error = 'Default exchange is disabled in settings' + ': ' + ex_name;
-  } else if (ex[ex_name].trading_pairs.findIndex(p => p.toLowerCase() == ex_pair.toLowerCase()) == -1) {
+  } else if (ex[ex_name].trading_pairs.findIndex(p => p.toUpperCase() == ex_pair.toUpperCase()) == -1) {
     // invalid default exchange trading pair
     ex_error = 'Default exchange trading pair is not valid' + ': ' + ex_pair;
   }
@@ -785,10 +812,10 @@ if (settings.markets_page.enabled == true) {
       settings.markets_page.enabled = false;
     } else {
       // a valid and enabled market was found to replace the default
-      console.log('WARNING: ' + ex_error + '. ' + 'Default exchange will be set to' + ': ' + ex_keys[new_default_index] + ' (' + ex[ex_keys[new_default_index]].trading_pairs[0] + ')');
+      console.log('WARNING: ' + ex_error + '. ' + 'Default exchange will be set to' + ': ' + ex_keys[new_default_index] + '[' + ex[ex_keys[new_default_index]].trading_pairs[0].toUpperCase() + ']');
       // set new default exchange data
       settings.markets_page.default_exchange.exchange_name = ex_keys[new_default_index];
-      settings.markets_page.default_exchange.trading_pair = ex[ex_keys[new_default_index]].trading_pairs[0];
+      settings.markets_page.default_exchange.trading_pair = ex[ex_keys[new_default_index]].trading_pairs[0].toUpperCase();
     }
   }
 }
