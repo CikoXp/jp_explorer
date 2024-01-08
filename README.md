@@ -12,7 +12,7 @@ Written in node.js and mongodb, eIquidus is the most stable, secure, customizabl
 
 ### Crowdfunding Program
 
-Exor accepts targeted donations in an effort to crowdfund various feature and improvement requests for the block explorer and other Exor-related projects. [Browse the list of unfunded tasks](https://exor.io/tasklist/?o=ta&c=0&f=0&u=1) and send Exor coins to the correct funding address to help meet the funding goal for tasks that you would like to see developed. Once the funding goal is met, Exor developers will begin work on the task asap and will remain a top priority until completed. If you are a software developer and would like to work on funded tasks in exchange for payment in EXOR, please get in touch with us using one of the [Developer Contact](#developer-contact) links below.
+Exor accepts targeted donations in an effort to crowdfund various feature and improvement requests for the block explorer and other Exor-related projects. [Browse the list of unfunded tasks](https://exor.io/tasklist/hide-completed/hide-funded/show-unfunded/) and send Exor coins to the correct funding address to help meet the funding goal for tasks that you would like to see developed. Once the funding goal is met, Exor developers will begin work on the task asap and will remain a top priority until completed. If you are a software developer and would like to work on funded tasks in exchange for payment in EXOR, please get in touch with us using one of the [Developer Contact](#developer-contact) links below.
 
 ### Premium Support
 
@@ -100,9 +100,8 @@ Table of Contents
   - **Movement:** Displays latest blockchain transactions that are greater than a certain configurable amount
   - **Network:** Displays a list of peers that have connected to the coind wallet in the past 24 hours, along with useful addnode data that can be used to connect your own wallets to the network easier
   - **Top 100:** Displays the top 100 richest wallet addresses, the top 100 wallet addresses that have the highest total number of coins received based on adding up all received transactions, as well as a table and pie chart breakdown of wealth distribution. Additional support for omitting burned coins from top 100 lists
-  - **Markets:** Displays a number of exchange-related metrics including market summary, 24 hour chart, most recent buy/sell orders and latest trade history. The last known default exchange price is automatically converted to USD using the coingecko api from [https://www.coingecko.com/en/api](https://www.coingecko.com/en/api). The following 8 cryptocurrency exchanges are supported:
+  - **Markets:** Displays a number of exchange-related metrics including market summary, 24 hour chart, most recent buy/sell orders and latest trade history. Has the ability to integrate directly with exchange apis and/or the coingecko api from [https://www.coingecko.com/en/api](https://www.coingecko.com/en/api) to retrieve current market prices and convert to USD. The following 7 cryptocurrency exchanges are supported:
     - [AltMarkets](https://altmarkets.io)
-    - [Bittrex](https://bittrex.com)
     - [Dex-Trade](https://dex-trade.com)
     - [FreiExchange](https://freiexchange.com)/[FreiXLite](https://freixlite.com) *\*no chart support due to a lack of OHLCV api data*
     - [Poloniex](https://poloniex.com)
@@ -130,7 +129,7 @@ Table of Contents
       - **getlasttxs:** Returns transactions greater than a specific number of coins, starting from a particular offset
       - **getcurrentprice:** Returns last known exchange price
       - **getbasicstats:** Returns basic statistics about the coin including: block count, circulating supply, USD price, default market price and # of masternodes *\*# of masternodes is only applicable to masternode coins*
-      - **getsummary:** Returns a summary of coin data including: difficulty, hybrid difficulty, circulating supply, hash rate, default market price, network connection count, block count, count of online masternodes and count of offline masternodes *\*masternode counts are only applicable to masternode coins*
+      - **getsummary:** Returns a summary of coin data including: difficulty, hybrid difficulty, circulating supply, hash rate, default market price, USD price, network connection count, block count, count of online masternodes and count of offline masternodes *\*masternode counts are only applicable to masternode coins*
       - **getnetworkpeers:** Returns the list of network peers that have connected to the explorer node in the last 24 hours
       - **getmasternodelist:** Returns the complete list of masternodes on the network *\*only applicable to masternode coins*
       - **getmasternoderewards:** Returns a list of masternode reward transactions for a specific address that arrived after a specific block height *\*only applicable to masternode coins*
@@ -173,7 +172,9 @@ Table of Contents
   - **Masternodes:** Displays a count of online and unreachable masternodes *\*only applicable to masternode coins*
   - **Coin Supply:** Displays the current circulating coin supply value
   - **Price:** Displays the current market price (value measured using default market pair)
-  - **Market Cap:** Displays the current market cap value in (value measured using default market pair)
+  - **USD Price:** Displays the current market price (value measured in USD)
+  - **Market Cap:** Displays the current market cap value (value measured using default market pair)
+  - **USD Market Cap:** Displays the current market cap value (value measured in USD)
   - **Logo:** Display an image of your coin logo
 - Configurable network charts that can be independently displayed in the header of any page
   - **Hashrate chart:** Line graph listing of the estimated network hashes per second over the last number of blocks *\*Requires a full sync before network data will start being collected*
@@ -553,7 +554,7 @@ Easier crontab syntax using npm scripts, but may not work on some systems depend
 
 ```
 */1 * * * * cd /path/to/explorer && npm run sync-blocks > /dev/null 2>&1
-*/2 * * * * cd /path/to/explorer && npm run sync-markets > /dev/null 2>&1
+*/5 * * * * cd /path/to/explorer && npm run sync-markets > /dev/null 2>&1
 */5 * * * * cd /path/to/explorer && npm run sync-peers > /dev/null 2>&1
 */5 * * * * cd /path/to/explorer && npm run sync-masternodes > /dev/null 2>&1
 ```
@@ -562,7 +563,7 @@ Or, run the crontab by calling the sync script directly, which should work bette
 
 ```
 */1 * * * * cd /path/to/explorer && /path/to/node scripts/sync.js update > /dev/null 2>&1
-*/2 * * * * cd /path/to/explorer && /path/to/node scripts/sync.js market > /dev/null 2>&1
+*/5 * * * * cd /path/to/explorer && /path/to/node scripts/sync.js market > /dev/null 2>&1
 */5 * * * * cd /path/to/explorer && /path/to/node scripts/sync.js peers > /dev/null 2>&1
 */5 * * * * cd /path/to/explorer && /path/to/node scripts/sync.js masternodes > /dev/null 2>&1
 ```
@@ -963,11 +964,11 @@ The eIquidus block explorer is brought to you by the tireless efforts of the [Ex
 You can support us via one of the following options:
 
 1. [Buy and hodl EXOR](https://freixlite.com/market/EXOR/LTC). Buying and trading our EXOR coin helps stimulate the market price which allows us to hire more developers and continue to release high quality products in the future.
-2. Participate in our [crowdfunding program](https://exor.io/tasklist/?o=ta&c=0&f=0&u=1) by either sending some cryptocurrency to help fund the tasks you are most eager to see brought to life or [submit a new custom task request](https://exor.io/add-new-task/) detailing a feature or improvement you would like to see developed for any Exor-related project.
+2. Participate in our [crowdfunding program](https://exor.io/tasklist/hide-completed/hide-funded/show-unfunded/) by either sending some cryptocurrency to help fund the tasks you are most eager to see brought to life or [submit a new custom task request](https://exor.io/add-new-task/) detailing a feature or improvement you would like to see developed for any Exor-related project.
 3. Consider a small donation by sending us some cryptocurrency:
     - **BTC:** [15zQAQFB9KR35nPWEJEKvmytUF6fg2zvdP](https://www.blockchain.com/btc/address/15zQAQFB9KR35nPWEJEKvmytUF6fg2zvdP)
     - **EXOR:** [EYYW8Nvz5aJz33M3JNHXG2FEHWUsntozrd](https://explorer.exor.io/address/EYYW8Nvz5aJz33M3JNHXG2FEHWUsntozrd)
-4. Are you a software developer? Consider taking advantage of our [crowdfunding program](https://exor.io/tasklist/?o=ta&c=0&f=1&u=1) and get paid in EXOR to help make the block explorer and other Exor-related projects even better by submitting code improvements for open bounty tasks.
+4. Are you a software developer? Consider taking advantage of our [crowdfunding program](https://exor.io/tasklist/hide-completed/) and get paid in EXOR to help make the block explorer and other Exor-related projects even better by submitting code improvements for open bounty tasks.
 
 ### Special Thanks
 

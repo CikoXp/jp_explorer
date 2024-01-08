@@ -286,7 +286,9 @@ app.use('/ext/getcurrentprice', function(req, res) {
   // check if the getcurrentprice api is enabled
   if (settings.api_page.enabled == true && settings.api_page.public_apis.ext.getcurrentprice.enabled == true) {
     db.get_stats(settings.coin.name, function (stats) {
-      eval('var p_ext = { "last_price_' + settings.markets_page.default_exchange.trading_pair.split('/')[1].toLowerCase() + '": stats.last_price, "last_price_usd": stats.last_usd_price, }');
+      const currency = lib.get_market_currency_code();
+
+      eval('var p_ext = { "last_price_' + currency.toLowerCase() + '": stats.last_price, "last_price_usd": stats.last_usd_price, }');
       res.send(p_ext);
     });
   } else
@@ -298,16 +300,18 @@ app.use('/ext/getbasicstats', function(req, res) {
   if (settings.api_page.enabled == true && settings.api_page.public_apis.ext.getbasicstats.enabled == true) {
     // lookup stats
     db.get_stats(settings.coin.name, function (stats) {
+      const currency = lib.get_market_currency_code();
+
       // check if the masternode count api is enabled
       if (settings.api_page.public_apis.rpc.getmasternodecount.enabled == true && settings.api_cmds['getmasternodecount'] != null && settings.api_cmds['getmasternodecount'] != '') {
         // masternode count api is available
         lib.get_masternodecount(function(masternodestotal) {
-          eval('var p_ext = { "block_count": (stats.count ? stats.count : 0), "money_supply": (stats.supply ? stats.supply : 0), "last_price_' + settings.markets_page.default_exchange.trading_pair.split('/')[1].toLowerCase() + '": stats.last_price, "last_price_usd": stats.last_usd_price, "masternode_count": masternodestotal.total }');
+          eval('var p_ext = { "block_count": (stats.count ? stats.count : 0), "money_supply": (stats.supply ? stats.supply : 0), "last_price_' + currency.toLowerCase() + '": stats.last_price, "last_price_usd": stats.last_usd_price, "masternode_count": masternodestotal.total }');
           res.send(p_ext);
         });
       } else {
         // masternode count api is not available
-        eval('var p_ext = { "block_count": (stats.count ? stats.count : 0), "money_supply": (stats.supply ? stats.supply : 0), "last_price_' + settings.markets_page.default_exchange.trading_pair.split('/')[1].toLowerCase() + '": stats.last_price, "last_price_usd": stats.last_usd_price }');
+        eval('var p_ext = { "block_count": (stats.count ? stats.count : 0), "money_supply": (stats.supply ? stats.supply : 0), "last_price_' + currency.toLowerCase() + '": stats.last_price, "last_price_usd": stats.last_usd_price }');
         res.send(p_ext);
       }
     });
@@ -509,6 +513,7 @@ app.use('/ext/getsummary', function(req, res) {
                   supply: (stats == null || stats.supply == null ? 0 : stats.supply),
                   hashrate: hashrate,
                   lastPrice: (stats == null || stats.last_price == null ? 0 : stats.last_price),
+                  lastUSDPrice: (stats == null || stats.last_usd_price == null ? 0 : stats.last_usd_price),
                   connections: (connections ? connections : '-'),
                   blockcount: (blockcount ? blockcount : '-'),
                   masternodeCountOnline: (masternodestotal && mn_enabled != 0 ? mn_enabled : '-'),
@@ -767,9 +772,17 @@ if (settings.markets_page.enabled == true) {
       return 0;
   });
 
-  // Fix default exchange case
-  settings.markets_page.default_exchange.exchange_name = settings.markets_page.default_exchange.exchange_name.toLowerCase();
-  settings.markets_page.default_exchange.trading_pair = settings.markets_page.default_exchange.trading_pair.toUpperCase();
+  // fix default exchange name case
+  if (settings.markets_page.default_exchange.exchange_name != null)
+    settings.markets_page.default_exchange.exchange_name = settings.markets_page.default_exchange.exchange_name.toLowerCase();
+  else
+    settings.markets_page.default_exchange.exchange_name = '';
+
+  // fix default exchange trading pair case
+  if (settings.markets_page.default_exchange.trading_pair != null)
+    settings.markets_page.default_exchange.trading_pair = settings.markets_page.default_exchange.trading_pair.toUpperCase();
+  else
+    settings.markets_page.default_exchange.trading_pair = '';
 
   var ex = settings.markets_page.exchanges;
   var ex_name = settings.markets_page.default_exchange.exchange_name;
@@ -847,6 +860,7 @@ app.set('api_page', settings.api_page);
 app.set('claim_address_page', settings.claim_address_page);
 app.set('orphans_page', settings.orphans_page);
 app.set('labels', settings.labels);
+app.set('default_coingecko_ids', settings.default_coingecko_ids);
 app.set('api_cmds', settings.api_cmds);
 app.set('blockchain_specific', settings.blockchain_specific);
 
@@ -857,7 +871,9 @@ var panelcount = (settings.shared_pages.page_header.panels.network_panel.enabled
   (settings.shared_pages.page_header.panels.masternodes_panel.enabled == true && settings.shared_pages.page_header.panels.masternodes_panel.display_order > 0 ? 1 : 0) +
   (settings.shared_pages.page_header.panels.coin_supply_panel.enabled == true && settings.shared_pages.page_header.panels.coin_supply_panel.display_order > 0 ? 1 : 0) +
   (settings.shared_pages.page_header.panels.price_panel.enabled == true && settings.shared_pages.page_header.panels.price_panel.display_order > 0 ? 1 : 0) +
+  (settings.shared_pages.page_header.panels.usd_price_panel.enabled == true && settings.shared_pages.page_header.panels.usd_price_panel.display_order > 0 ? 1 : 0) +
   (settings.shared_pages.page_header.panels.market_cap_panel.enabled == true && settings.shared_pages.page_header.panels.market_cap_panel.display_order > 0 ? 1 : 0) +
+  (settings.shared_pages.page_header.panels.usd_market_cap_panel.enabled == true && settings.shared_pages.page_header.panels.usd_market_cap_panel.display_order > 0 ? 1 : 0) +
   (settings.shared_pages.page_header.panels.logo_panel.enabled == true && settings.shared_pages.page_header.panels.logo_panel.display_order > 0 ? 1 : 0) +
   (settings.shared_pages.page_header.panels.spacer_panel_1.enabled == true && settings.shared_pages.page_header.panels.spacer_panel_1.display_order > 0 ? 1 : 0) +
   (settings.shared_pages.page_header.panels.spacer_panel_2.enabled == true && settings.shared_pages.page_header.panels.spacer_panel_2.display_order > 0 ? 1 : 0) +
@@ -872,7 +888,9 @@ if (settings.shared_pages.page_header.panels.difficulty_panel.enabled == true &&
 if (settings.shared_pages.page_header.panels.masternodes_panel.enabled == true && settings.shared_pages.page_header.panels.masternodes_panel.display_order > 0) panel_order.push({name: 'masternodes_panel', val: settings.shared_pages.page_header.panels.masternodes_panel.display_order});
 if (settings.shared_pages.page_header.panels.coin_supply_panel.enabled == true && settings.shared_pages.page_header.panels.coin_supply_panel.display_order > 0) panel_order.push({name: 'coin_supply_panel', val: settings.shared_pages.page_header.panels.coin_supply_panel.display_order});
 if (settings.shared_pages.page_header.panels.price_panel.enabled == true && settings.shared_pages.page_header.panels.price_panel.display_order > 0) panel_order.push({name: 'price_panel', val: settings.shared_pages.page_header.panels.price_panel.display_order});
+if (settings.shared_pages.page_header.panels.usd_price_panel.enabled == true && settings.shared_pages.page_header.panels.usd_price_panel.display_order > 0) panel_order.push({name: 'usd_price_panel', val: settings.shared_pages.page_header.panels.usd_price_panel.display_order});
 if (settings.shared_pages.page_header.panels.market_cap_panel.enabled == true && settings.shared_pages.page_header.panels.market_cap_panel.display_order > 0) panel_order.push({name: 'market_cap_panel', val: settings.shared_pages.page_header.panels.market_cap_panel.display_order});
+if (settings.shared_pages.page_header.panels.usd_market_cap_panel.enabled == true && settings.shared_pages.page_header.panels.usd_market_cap_panel.display_order > 0) panel_order.push({name: 'usd_market_cap_panel', val: settings.shared_pages.page_header.panels.usd_market_cap_panel.display_order});
 if (settings.shared_pages.page_header.panels.logo_panel.enabled == true && settings.shared_pages.page_header.panels.logo_panel.display_order > 0) panel_order.push({name: 'logo_panel', val: settings.shared_pages.page_header.panels.logo_panel.display_order});
 if (settings.shared_pages.page_header.panels.spacer_panel_1.enabled == true && settings.shared_pages.page_header.panels.spacer_panel_1.display_order > 0) panel_order.push({name: 'spacer_panel_1', val: settings.shared_pages.page_header.panels.spacer_panel_1.display_order});
 if (settings.shared_pages.page_header.panels.spacer_panel_2.enabled == true && settings.shared_pages.page_header.panels.spacer_panel_2.display_order > 0) panel_order.push({name: 'spacer_panel_2', val: settings.shared_pages.page_header.panels.spacer_panel_2.display_order});
