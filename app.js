@@ -4,7 +4,6 @@ var express = require('express'),
     favicon = require('serve-favicon'),
     logger = require('morgan'),
     cookieParser = require('cookie-parser'),
-    bodyParser = require('body-parser'),
     settings = require('./lib/settings'),
     routes = require('./routes/index'),
     lib = require('./lib/explorer'),
@@ -167,8 +166,8 @@ if (default_favicon != '')
   app.use(favicon(path.join('./public', default_favicon)));
 
 app.use(logger('dev'));
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -190,42 +189,35 @@ app.post('/claim', function(req, res) {
       // show the captcha error
       res.json({'status': 'failed', 'error': true, 'message': 'The captcha validation failed'});
     } else {
-      // check if the bad-words filter is enabled
-      if (settings.claim_address_page.enable_bad_word_filter == true) {
-        // initialize the bad-words filter
-        var bad_word_lib = require('bad-words');
-        var bad_word_filter = new bad_word_lib();
-
-        // clean the message (Display name) of bad words
-        var message = (req.body.message == null || req.body.message == '' ? '' : bad_word_filter.clean(req.body.message));
-      } else {
-        // do not use the bad word filter
-        var message = (req.body.message == null || req.body.message == '' ? '' : req.body.message);
-      }
-
-      // check if the message was filtered
-      if (message == req.body.message) {
-        // call the verifymessage api
-        lib.verify_message(req.body.address, req.body.signature, req.body.message, function(body) {
-          if (body == false)
-            res.json({'status': 'failed', 'error': true, 'message': 'Invalid signature'});
-          else if (body == true) {
-            db.update_claim_name(req.body.address, req.body.message, function(val) {
-              // check if the update was successful
-              if (val == '')
-                res.json({'status': 'success'});
-              else if (val == 'no_address')
-                res.json({'status': 'failed', 'error': true, 'message': 'Wallet address ' + req.body.address + ' is not valid or does not have any transactions'});
-              else
-                res.json({'status': 'failed', 'error': true, 'message': 'Wallet address or signature is invalid'});
-            });
-          } else
-            res.json({'status': 'failed', 'error': true, 'message': 'Wallet address or signature is invalid'});
-        });
-      } else {
-        // message was filtered which would change the signature
-        res.json({'status': 'failed', 'error': true, 'message': 'Display name contains bad words and cannot be saved: ' + message});
-      }
+      // filter bad words if enabled
+      filter_bad_words((req.body.message == null || req.body.message == '' ? '' : req.body.message), function(claim_error, message) {
+        // check if there was an error or if the message was filtered
+        if (claim_error != null) {
+          // an error occurred with loading the bad-words filter
+          res.json({'status': 'failed', 'error': true, 'message': 'Error loading the bad-words filter: ' + claim_error});
+        } else if (message == req.body.message) {
+          // call the verifymessage api
+          lib.verify_message(req.body.address, req.body.signature, req.body.message, function(body) {
+            if (body == false)
+              res.json({'status': 'failed', 'error': true, 'message': 'Invalid signature'});
+            else if (body == true) {
+              db.update_claim_name(req.body.address, req.body.message, function(val) {
+                // check if the update was successful
+                if (val == '')
+                  res.json({'status': 'success'});
+                else if (val == 'no_address')
+                  res.json({'status': 'failed', 'error': true, 'message': 'Wallet address ' + req.body.address + ' is not valid or does not have any transactions'});
+                else
+                  res.json({'status': 'failed', 'error': true, 'message': 'Wallet address or signature is invalid'});
+              });
+            } else
+              res.json({'status': 'failed', 'error': true, 'message': 'Wallet address or signature is invalid'});
+          });
+        } else {
+          // message was filtered which would change the signature
+          res.json({'status': 'failed', 'error': true, 'message': 'Display name contains bad words and cannot be saved: ' + message});
+        }
+      });
     }
   });
 });
@@ -310,6 +302,27 @@ function validate_captcha(captcha_enabled, data, cb) {
   } else {
     // captcha is not enabled for this feature
     return cb(false);
+  }
+}
+
+function filter_bad_words(msg, cb) {
+  // check if the bad-words filter is enabled
+  if (settings.claim_address_page.enable_bad_word_filter == true) {
+    // import the bad-words dependency
+    import('bad-words').then(function(module) {
+      // load the bad-words filter
+      const bad_word_lib = module.Filter;
+      const bad_word_filter = new bad_word_lib();
+
+       // return the filtered msg
+      return cb(null, bad_word_filter.clean(msg));
+    })
+    .catch(function(err) {
+      return cb(err, null);
+    });
+  } else {
+    // return the msg without filtering for bad words
+    return cb(null, msg);
   }
 }
 
@@ -487,35 +500,35 @@ app.use('/ext/gettx/:txid', function(req, res) {
           if (rtx && rtx.txid) {
             lib.prepare_vin(rtx, function(vin, tx_type_vin) {
               lib.prepare_vout(rtx.vout, rtx.txid, vin, ((typeof rtx.vjoinsplit === 'undefined' || rtx.vjoinsplit == null) ? [] : rtx.vjoinsplit), function(rvout, rvin, tx_type_vout) {
-                lib.calculate_total(rvout, function(total) {
-                  if (!rtx.confirmations > 0) {
-                    var utx = {
-                      txid: rtx.txid,
-                      vin: rvin,
-                      vout: rvout,
-                      total: total.toFixed(8),
-                      timestamp: rtx.time,
-                      blockhash: '-',
-                      blockindex: -1
-                    };
+                const total = lib.calculate_total(rvout);
 
-                    res.send({ active: 'tx', tx: utx, confirmations: rtx.confirmations, blockcount:-1});
-                  } else {
-                    var utx = {
-                      txid: rtx.txid,
-                      vin: rvin,
-                      vout: rvout,
-                      total: total.toFixed(8),
-                      timestamp: rtx.time,
-                      blockhash: rtx.blockhash,
-                      blockindex: rtx.blockheight
-                    };
+                if (!rtx.confirmations > 0) {
+                  var utx = {
+                    txid: rtx.txid,
+                    vin: rvin,
+                    vout: rvout,
+                    total: total.toFixed(8),
+                    timestamp: rtx.time,
+                    blockhash: '-',
+                    blockindex: -1
+                  };
 
-                    lib.get_blockcount(function(blockcount) {
-                      res.send({ active: 'tx', tx: utx, confirmations: rtx.confirmations, blockcount: (blockcount ? blockcount : 0)});
-                    });
-                  }
-                });
+                  res.send({ active: 'tx', tx: utx, confirmations: rtx.confirmations, blockcount:-1});
+                } else {
+                  var utx = {
+                    txid: rtx.txid,
+                    vin: rvin,
+                    vout: rvout,
+                    total: total.toFixed(8),
+                    timestamp: rtx.time,
+                    blockhash: rtx.blockhash,
+                    blockindex: rtx.blockheight
+                  };
+
+                  lib.get_blockcount(function(blockcount) {
+                    res.send({ active: 'tx', tx: utx, confirmations: rtx.confirmations, blockcount: (blockcount ? blockcount : 0)});
+                  });
+                }
               });
             });
           } else
@@ -805,29 +818,28 @@ app.use('/ext/getsummary', function(req, res) {
 app.use('/ext/getnetworkpeers', function(req, res) {
   // check if the getnetworkpeers api is enabled or else check the headers to see if it matches an internal ajax request from the explorer itself (TODO: come up with a more secure method of whitelisting ajax calls from the explorer)
   if ((settings.api_page.enabled == true && settings.api_page.public_apis.ext.getnetworkpeers.enabled == true) || (req.headers['x-requested-with'] != null && req.headers['x-requested-with'].toLowerCase() == 'xmlhttprequest' && req.headers.referer != null && req.headers.accept.indexOf('text/javascript') > -1 && req.headers.accept.indexOf('application/json') > -1)) {
+    // split url suffix by forward slash and remove blank entries
+    const split = req.url.split('/').filter(function(v) { return v; });
+    let internal = false;
+
+    // check if this is an internal request
+    if (split.length > 0 && split[0] == 'internal')
+      internal = true;
+
     // get list of peers
-    db.get_peers(function(peers) {
-      // loop through peers list and remove the mongo _id and __v keys
-      for (i = 0; i < peers.length; i++) {
-        delete peers[i]['_doc']['_id'];
-        delete peers[i]['_doc']['__v'];
-      }
-
-      // sort ip6 addresses to the bottom
-      peers.sort(function(a, b) {
-        var address1 = a.address.indexOf(':') > -1;
-        var address2 = b.address.indexOf(':') > -1;
-
-        if (address1 < address2)
-          return -1;
-        else if (address1 > address2)
-          return 1;
-        else
-          return 0;
-      });
-
+    db.get_peers(!internal, function(connection_peers, addnode_peers, onetry_peers) {
       // return peer data
-      res.json(peers);
+      if (internal)
+        res.json({'connection_peers': connection_peers, 'addnode_peers': addnode_peers, 'onetry_peers': onetry_peers});
+      else {
+        // remove ipv6 and table_type fields before outputting the api data
+        connection_peers.forEach(function (peer) {
+          delete peer.ipv6;
+          delete peer.table_type;
+        });
+
+        res.json(connection_peers);
+      }
     });
   } else
     res.end(settings.localization.method_disabled);

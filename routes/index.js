@@ -1,10 +1,30 @@
-var express = require('express'),
-    router = express.Router(),
-    settings = require('../lib/settings'),
-    db = require('../lib/database'),
-    lib = require('../lib/explorer');
+const express = require('express');
+const router = express.Router();
+const settings = require('../lib/settings');
+const db = require('../lib/database');
+const lib = require('../lib/explorer');
+const async = require('async');
 
 function send_block_data(res, block, txs, title_text, orphan) {
+  let extracted_by_addresses = [];
+
+  // check if the extracted by addresses should be found
+  if (settings.block_page.show_extracted_by == true && txs != null && txs.length > 0) {
+    // find the block reward tx
+    const block_reward_tx = txs.find(tx => tx.vin != null && (tx.vin.length === 0 || (tx.vin.length === 1 && tx.vin[0].addresses === 'coinbase' && tx.vin[0].amount != 0)));
+
+    // get a list of all the block reward addresses
+    extracted_by_addresses = (block_reward_tx ? block_reward_tx.vout.map(v => v.addresses) : []);
+
+    // add claim name data to the array
+    db.get_extracted_by_claim_names(extracted_by_addresses, function(updated_extracted_by_addresses) {
+      finalize_send_block_data(res, block, txs, title_text, orphan, updated_extracted_by_addresses);
+    });
+  } else
+    finalize_send_block_data(res, block, txs, title_text, orphan, extracted_by_addresses);
+}
+
+function finalize_send_block_data(res, block, txs, title_text, orphan, extracted_by_addresses) {
   res.render(
     'block',
     {
@@ -13,6 +33,7 @@ function send_block_data(res, block, txs, title_text, orphan) {
       orphan: orphan,
       confirmations: settings.shared_pages.confirmations,
       txs: txs,
+      extracted_by_addresses: extracted_by_addresses,
       showSync: db.check_show_sync_message(),
       customHash: get_custom_hash(),
       styleHash: get_style_hash(),
@@ -23,6 +44,35 @@ function send_block_data(res, block, txs, title_text, orphan) {
 }
 
 function send_tx_data(res, tx, blockcount, orphan) {
+  let extracted_by_addresses = [];
+
+  // check if the extracted by addresses should be found
+  if (
+    settings.transaction_page.show_extracted_by == true &&
+    tx != null &&
+    tx.vout != null &&
+    (
+      tx.vin == null ||
+      tx.vin.length === 0 ||
+      (
+        tx.vin.length === 1 &&
+        tx.vin[0].addresses === 'coinbase' &&
+        tx.vin[0].amount != 0
+      )
+    )
+  ) {
+    // get a list of all the block reward addresses
+    extracted_by_addresses = tx.vout.map(v => v.addresses);
+
+    // add claim name data to the array
+    db.get_extracted_by_claim_names(extracted_by_addresses, function(updated_extracted_by_addresses) {
+      finalize_send_tx_data(res, tx, blockcount, orphan, updated_extracted_by_addresses);
+    });
+  } else
+    finalize_send_tx_data(res, tx, blockcount, orphan, extracted_by_addresses);
+}
+
+function finalize_send_tx_data(res, tx, blockcount, orphan, extracted_by_addresses) {
   res.render(
     'tx',
     {
@@ -31,6 +81,7 @@ function send_tx_data(res, tx, blockcount, orphan) {
       orphan: orphan,
       confirmations: settings.shared_pages.confirmations,
       blockcount: blockcount,
+      extracted_by_addresses: extracted_by_addresses,
       showSync: db.check_show_sync_message(),
       customHash: get_custom_hash(),
       styleHash: get_style_hash(),
@@ -95,26 +146,29 @@ function get_last_updated_date(show_last_updated, last_updated_field, cb) {
 function get_block_data_from_wallet(block, res, orphan) {
   var ntxs = [];
 
-  lib.syncLoop(block.tx.length, function (loop) {
-    var i = loop.iteration();
-
-    lib.get_rawtransaction(block.tx[i], function(tx) {
+  async.eachSeries(block.tx, function(block_tx, loop) {
+    lib.get_rawtransaction(block_tx, function(tx) {
       if (tx && tx != `${settings.localization.ex_error}: ${settings.localization.check_console}`) {
         lib.prepare_vin(tx, function(vin, tx_type_vin) {
-          lib.prepare_vout(tx.vout, block.tx[i], vin, ((!settings.blockchain_specific.zksnarks.enabled || typeof tx.vjoinsplit === 'undefined' || tx.vjoinsplit == null) ? [] : tx.vjoinsplit), function(vout, nvin, tx_type_vout) {
-            lib.calculate_total(vout, function(total) {
-              ntxs.push({
-                txid: block.tx[i],
-                vout: vout,
-                total: total.toFixed(8)
-              });
+          lib.prepare_vout(tx.vout, block_tx, vin, ((!settings.blockchain_specific.zksnarks.enabled || typeof tx.vjoinsplit === 'undefined' || tx.vjoinsplit == null) ? [] : tx.vjoinsplit), function(vout, nvin, tx_type_vout) {
+            const total = lib.calculate_total(vout);
 
-              loop.next();
+            ntxs.push({
+              txid: block_tx,
+              vout: vout,
+              total: total.toFixed(8)
             });
+
+            if (settings.block_page.show_extracted_by == true) {
+              // add the vin object to the tx data
+              ntxs[ntxs.length - 1].vin = (vin == null || vin.length == 0 ? [] : nvin);
+            }
+
+            loop();
           });
         });
       } else
-        loop.next();
+        loop();
     });
   }, function() {
     send_block_data(res, block, ntxs, 'Block ' + block.height, orphan);
@@ -188,84 +242,84 @@ function route_get_tx(res, txid) {
           if (rtx && rtx.txid) {
             lib.prepare_vin(rtx, function(vin, tx_type_vin) {
               lib.prepare_vout(rtx.vout, rtx.txid, vin, ((!settings.blockchain_specific.zksnarks.enabled || typeof rtx.vjoinsplit === 'undefined' || rtx.vjoinsplit == null) ? [] : rtx.vjoinsplit), function(rvout, rvin, tx_type_vout) {
-                lib.calculate_total(rvout, function(total) {
-                  if (!rtx.confirmations > 0) {
+                const total = lib.calculate_total(rvout);
+
+                if (!rtx.confirmations > 0) {
+                  lib.get_block(rtx.blockhash, function(block) {
+                    if (block && block != `${settings.localization.ex_error}: ${settings.localization.check_console}`) {
+                      var utx = {
+                        txid: rtx.txid,
+                        vin: rvin,
+                        vout: rvout,
+                        total: total.toFixed(8),
+                        timestamp: (rtx.time == null ? block.time : rtx.time),
+                        blockhash: (rtx.blockhash == null ? '-' : rtx.blockhash),
+                        blockindex: block.height
+                      };
+
+                      if (settings.claim_address_page.enabled == true) {
+                        db.populate_claim_address_names(utx, function(utx) {
+                          send_tx_data(res, utx, (block.height - 1), true);
+                        });
+                      } else
+                        send_tx_data(res, utx, (block.height - 1), true);
+                    } else {
+                      // cannot load tx
+                      route_get_txlist(res, null);
+                    }
+                  });
+                } else {
+                  // check if blockheight exists
+                  if (!rtx.blockheight && rtx.blockhash) {
+                    // blockheight not found so look up the block
                     lib.get_block(rtx.blockhash, function(block) {
                       if (block && block != `${settings.localization.ex_error}: ${settings.localization.check_console}`) {
+                        // create the tx object before rendering
                         var utx = {
                           txid: rtx.txid,
                           vin: rvin,
                           vout: rvout,
                           total: total.toFixed(8),
-                          timestamp: (rtx.time == null ? block.time : rtx.time),
-                          blockhash: (rtx.blockhash == null ? '-' : rtx.blockhash),
+                          timestamp: rtx.time,
+                          blockhash: rtx.blockhash,
                           blockindex: block.height
                         };
 
-                        if (settings.claim_address_page.enabled == true) {
-                          db.populate_claim_address_names(utx, function(utx) {
-                            send_tx_data(res, utx, (block.height - 1), true);
-                          });
-                        } else
-                          send_tx_data(res, utx, (block.height - 1), true);
+                        lib.get_blockcount(function(blockcount) {
+                          if (settings.claim_address_page.enabled == true) {
+                            db.populate_claim_address_names(utx, function(utx) {
+                              send_tx_data(res, utx, (blockcount ? blockcount : 0), null);
+                            });
+                          } else
+                            send_tx_data(res, utx, (blockcount ? blockcount : 0), null);
+                        });
                       } else {
                         // cannot load tx
                         route_get_txlist(res, null);
                       }
                     });
                   } else {
-                    // check if blockheight exists
-                    if (!rtx.blockheight && rtx.blockhash) {
-                      // blockheight not found so look up the block
-                      lib.get_block(rtx.blockhash, function(block) {
-                        if (block && block != `${settings.localization.ex_error}: ${settings.localization.check_console}`) {
-                          // create the tx object before rendering
-                          var utx = {
-                            txid: rtx.txid,
-                            vin: rvin,
-                            vout: rvout,
-                            total: total.toFixed(8),
-                            timestamp: rtx.time,
-                            blockhash: rtx.blockhash,
-                            blockindex: block.height
-                          };
+                    // create the tx object before rendering
+                    var utx = {
+                      txid: rtx.txid,
+                      vin: rvin,
+                      vout: rvout,
+                      total: total.toFixed(8),
+                      timestamp: rtx.time,
+                      blockhash: rtx.blockhash,
+                      blockindex: rtx.blockheight
+                    };
 
-                          lib.get_blockcount(function(blockcount) {
-                            if (settings.claim_address_page.enabled == true) {
-                              db.populate_claim_address_names(utx, function(utx) {
-                                send_tx_data(res, utx, (blockcount ? blockcount : 0), null);
-                              });
-                            } else
-                              send_tx_data(res, utx, (blockcount ? blockcount : 0), null);
-                          });
-                        } else {
-                          // cannot load tx
-                          route_get_txlist(res, null);
-                        }
-                      });
-                    } else {
-                      // create the tx object before rendering
-                      var utx = {
-                        txid: rtx.txid,
-                        vin: rvin,
-                        vout: rvout,
-                        total: total.toFixed(8),
-                        timestamp: rtx.time,
-                        blockhash: rtx.blockhash,
-                        blockindex: rtx.blockheight
-                      };
-
-                      lib.get_blockcount(function(blockcount) {
-                        if (settings.claim_address_page.enabled == true) {
-                          db.populate_claim_address_names(utx, function(utx) {
-                            send_tx_data(res, utx, (blockcount ? blockcount : 0), null);
-                          });
-                        } else
+                    lib.get_blockcount(function(blockcount) {
+                      if (settings.claim_address_page.enabled == true) {
+                        db.populate_claim_address_names(utx, function(utx) {
                           send_tx_data(res, utx, (blockcount ? blockcount : 0), null);
-                      });
-                    }
+                        });
+                      } else
+                        send_tx_data(res, utx, (blockcount ? blockcount : 0), null);
+                    });
                   }
-                });
+                }
               });
             });
           } else
@@ -522,7 +576,14 @@ router.get('/movement', function(req, res) {
 
 router.get('/network', function(req, res) {
   // ensure network page is enabled
-  if (settings.network_page.enabled == true) {
+  if (
+    settings.network_page.enabled == true &&
+    (
+      settings.network_page.connections_table.enabled == true ||
+      settings.network_page.addnodes_table.enabled == true ||
+      settings.network_page.onetry_table.enabled == true
+    )
+  ) {
     // lookup the last updated date if necessary
     get_last_updated_date(settings.network_page.page_header.show_last_updated, 'network_last_updated', function(last_updated_date) {
       res.render(
